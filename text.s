@@ -528,6 +528,7 @@ enter: # 回车键，换行
 # addi $a1, $zero, 4
 # jal display_num
 jal display_regs
+jal display_memory
 sub  $t1, $t0, $s6        # $t1=delta_offset，即当前显示地址和屏幕第一个点的地址之差
 add $t2, $zero, $zero     # $t2 = 0
 loop_enter:               # $t2 = k*80 && $t2 < delta_offset, 执行完该循环，$t2=当前光标下一行第一个点的地址偏移量
@@ -671,23 +672,23 @@ addi $sp, $sp, -12
 sw $ra, 8($sp)
 sw $a0, 4($sp)
 sw $a1, 0($sp)
-regs_0:
+DREG_0:
 addi $t1, $t0, -16          # $t1为$t0前四个字符中第一个字符的地址，一开始用于检测DREG的"D"
 lw $s1, 0($t1)              # 取出$t1地址上的字符
 ori $s2, $zero, 0x0F44      # $s2 = 'D'
 bne $s1, $s2, reg_return    # 如果第一个字符不是'D'，则直接跳出检测
 addi $t1, $t1, 4            # 地址$t1++，检测下一个字符
-regs_1:
+DREG_1:
 lw $s1, 0($t1)              # 取出$t1地址上的字符
 ori $s2, $zero, 0x0F52      # $s2 = 'R'
 bne $s1, $s2, reg_return    # 如果第二个字符不是'R'，则直接跳出检测
 addi $t1, $t1, 4            # 地址$t1++，检测下一个字符
-regs_2:
+DREG_2:
 lw $s1, 0($t1)              # 取出$t1地址上的字符
 ori $s2, $zero, 0x0F45      # $s2 = 'E'
 bne $s1, $s2, reg_return    # 如果第三个字符不是'E'，则直接跳出检测
 addi $t1, $t1, 4            # 地址$t1++，检测下一个字符
-regs_3:
+DREG_3:
 lw $s1, 0($t1)              # 取出$t1地址上的字符
 ori $s2, $zero, 0x0F47      # $s3 = 'G'
 bne $s1, $s2, reg_return    # 如果第四个字符不是'G'，则直接跳出检测
@@ -913,3 +914,76 @@ addi $sp, $sp, 12
 jr $ra
 
 
+# 读取屏幕上的8个16进制数，并存放到$v0返回
+# input: $a0=最后一位数的地址，output：$v0:8位16进制数
+read_num:
+addi $sp, $sp, -4
+sw   $ra, 0($sp)
+addi $t1, $a0, -28          # $t1=第一位数字的地址
+hex_loop:
+lw $s1, 0($t1)              # 取出该地址上的16进制数
+ori $t4, $zero, 0x0F30      # 如果$s1不在0~9: 0x0F30-0x0F39，A~F:0x0F41-0x0F46范围内，则返回0
+ori $t5, $zero, 0x0F46      # 由于我没有设置0x0F40的显示函数，因此这里肯定不会出现0x0F40
+slt $t3, $s1, $t4
+bne $t3, $zero, set_null    # 遇到非法字符，则把输出的16进制数清零
+slt $t3, $t5, $s1
+bne $t3, $zero, set_null
+sub $t2, $s1, $t4           # 转化为对应的数值放到$t2里，A~F还需额外减1
+slti $t3, $t2, 10
+bne $t3, $zero, hex_merge   # 如果$t2<10，则是数字0~9，直接合并到16进制数里
+addi $t2, $t2, -1           # 否则，A~F还需额外减1
+hex_merge:
+sll $v0, $v0, 4             # $v0左移四位
+add $v0, $v0, $t2           # $t2补到低4位上
+addi $t1, $t1, 4            # 地址移到下一位
+bne $t1, $a0, hex_loop      # 如果还没有读完，则继续循环
+j hex_return                # 如果读取完毕且正常，则返回调用地址
+set_null:
+add $v0, $zero, $zero
+hex_return:
+lw $ra, 0($sp)
+addi $sp, $sp, 4
+jr $ra
+
+# 用16进制显示指定内存单元数据
+# input：8位16进制数，output：屏幕上显示该地址上的数据
+display_memory:
+addi $sp, $sp, -12
+sw $ra, 8($sp)
+sw $a0, 4($sp)
+sw $a1, 0($sp)
+DMEM_0:
+addi $t1, $t0, -16          # $t1为$t0前四个字符中第一个字符的地址，一开始用于检测DMEM的"D"
+lw $s1, 0($t1)              # 取出$t1地址上的字符
+ori $s2, $zero, 0x0F44      # $s2 = 'D'
+bne $s1, $s2, mem_return    # 如果第一个字符不是'D'，则直接跳出检测
+addi $t1, $t1, 4            # 地址$t1++，检测下一个字符
+DMEM_1:
+lw $s1, 0($t1)              # 取出$t1地址上的字符
+ori $s2, $zero, 0x0F4D      # $s2 = 'M'
+bne $s1, $s2, mem_return    # 如果第二个字符不是'M'，则直接跳出检测
+addi $t1, $t1, 4            # 地址$t1++，检测下一个字符
+DMEM_2:
+lw $s1, 0($t1)              # 取出$t1地址上的字符
+ori $s2, $zero, 0x0F45      # $s2 = 'E'
+bne $s1, $s2, mem_return    # 如果第三个字符不是'E'，则直接跳出检测
+addi $t1, $t1, 4            # 地址$t1++，检测下一个字符
+DMEM_3:
+lw $s1, 0($t1)              # 取出$t1地址上的字符
+ori $s2, $zero, 0x0F4D      # $s3 = 'M'
+bne $s1, $s2, mem_return    # 如果第四个字符不是'M'，则直接跳出检测
+addi $t1, $t1, 4            # 地址$t1++
+DMEM:
+bne $t1, $t0, mem_return    # 如果前4个字符不是'DMEM'，则直接返回，而不显示任何内容
+addi $a0, $t0, -24          # 第8位16进制数的地址
+jal read_num                # 读取8位16进制数，返回值为$v0
+lw $a0, 0($v0)
+# add $a0, $zero, $v0
+addi $a1, $zero, 8
+jal display_num
+mem_return:
+lw $a1, 0($sp)
+lw $a0, 4($sp)
+lw $ra, 8($sp)
+addi $sp, $sp, 12
+jr $ra
