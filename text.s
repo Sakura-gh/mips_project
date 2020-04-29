@@ -8,16 +8,64 @@ lui $s6, 0x000C         # $s6 = vram_text = 0x000C0000 vga地址
 lui $s5, 0x8000         # $s5 = 0x80000000 $s5最高位为1，用于取出ps2的ready信号
 addi $s4, $zero, 0x00F0 # $s4 = 0x000000F0 ，F0是断码的标志，是所有key的倒数第二个断码
 
-init:
-add $t0, $zero, $s6     # $t0 = $s6 varm_text offset
+lui $k0, 0xFFFF         
+ori $k0, $k0, 0xFC00    # $k0 = 0xFFFFFC00, button地址
 
+init:
+add $t0, $zero, $s6       # $t0 = $s6 varm_text offset
 read_kbd:
+# 读取阵列键盘button，这是后续添加的代码，因此函数命名还是按照之前的ps2来
+lw $t1, 0($k0)            # 取出button地址上的内容，$t1 = {KRDY, 21'h0, BTN[4:0], KCODE[4:0]}
+and $t2, $t1, $s5         # 取出最高位的KRDY信号,$s5=0x80000000 
+beq $t2, $s5, read_btn    # 如果KRDY=1，则读取button信号并显示16进制
+# 读取ps2键盘输入
 lw $t1, 0($s7)            # $t1 = {1'ps2_ready, 23'h0, 8'key}
 and $t2, $t1, $s5         # 取出$t1最高位的ready信号放到$t2上
 beq $t2, $zero, read_kbd  # $t2=0表示没有ps2输入，此时跳回去接着读read_kbd
 andi $t2, $t1, 0x00FF     # 如果ready=1，取出$t1低八位的通码
 beq $t2, $s4, read        # 如果$t2=0x00F0，则说明读到了倒数第二个断码，此时跳到read来显示键盘码
 j read_kbd
+
+# 读取阵列键盘16进制数并在光标处显示
+# 此时$t1为button地址线上的内容
+read_btn:
+add $ra, $zero, $zero     # 这里兼容我之前读取ps2的代码，设置$ra=0，这样显示完后就直接跳回读取新的信号
+andi $t2, $t1, 0xFFFF     # 取出$t1的后16位放到$t2里
+addi $s1, $zero, 0x0020   # $s1 = button_0
+beq $t2, $s1, n0
+addi $s1, $zero, 0x0041   # $s1 = button_1
+beq $t2, $s1, n1
+addi $s1, $zero, 0x0082   # $s1 = button_2
+beq $s2, $s1, n2
+addi $s1, $zero, 0x0103   # $s1 = button_3
+beq $s2, $s1, n3
+addi $s1, $zero, 0x0024   # $s1 = button_4
+beq $s2, $s1, n4
+addi $s1, $zero, 0x0045   # $s1 = button_5
+beq $s2, $s1, n5
+addi $s1, $zero, 0x0086   # $s1 = button_6
+beq $s2, $s1, n6
+addi $s1, $zero, 0x0107   # $s1 = button_7
+beq $s2, $s1, n7
+addi $s1, $zero, 0x0028   # $s1 = button_8
+beq $s2, $s1, n8
+addi $s1, $zero, 0x0049   # $s1 = button_9
+beq $s2, $s1, n9
+addi $s1, $zero, 0x008A   # $s1 = button_A
+beq $s2, $s1, a
+addi $s1, $zero, 0x010B   # $s1 = button_B
+beq $s2, $s1, b
+addi $s1, $zero, 0x002C   # $s1 = button_C
+beq $s2, $s1, c
+addi $s1, $zero, 0x004D   # $s1 = button_D
+beq $s2, $s1, d
+addi $s1, $zero, 0x008E   # $s1 = button_E
+beq $s2, $s1, e
+addi $s1, $zero, 0x010F   # $s1 = button_F
+beq $s2, $s1, f
+j read_kbd
+
+
 
 read: # 读入最后一个断码，也就是key的标识码
 lw $t1, 0($s7)            # $t1 = {1'ps2_ready, 23'h0, 8'key}
@@ -120,6 +168,12 @@ addi $s1, $zero, 0x0d       # $s1 = "tab"
 beq  $t2, $s1, toGraph      # if $t2 == "tab", then change mode into graph
 addi $s1, $zero, 0x76       # $s1 = "esc"
 beq  $t2, $s1, clear        # if $t2 == "esc", then clear
+
+addi $s1, $zero, 0x4E       # $s1 = "-"
+beq $t2, $s1, downScreen    # if $t2 == "-", then 屏幕下移一行
+addi $s1, $zero, 0x55       # $s1 = "+"
+beq $t2, $s1, upScreen      # if $t2 == "+", then 屏幕上移一行
+
 j read_kbd
 
 # 字符显示函数的调用有两种途径：1、显示键盘码，此时$ra=0，执行完后直接跳到read_kbd重新读取ps2；2、某些函数相要直接显示字符，此时显示完后返回$ra的地址
@@ -519,6 +573,35 @@ addi $t0, $t0, -4         # 移动到上一个地址，offset--
 bne $t0, $s6, clr         # 如果还没有移动到屏幕第一个点的地址，则继续清空
 sw $zero, 0($t0)          # 达到屏幕第一个点，把它清空
 j read_kbd                # 跳回read_kbd，继续读取键盘码
+
+# 按下减号键"-"，屏幕下移一行
+downScreen:
+add $t1, $zero, $t0       # 获取当前光标的地址，赋值给$t1
+addi $t2, $t0, 320        # 获取当前光标下移一行的地址，赋值给$t2
+down_loop:
+lw $s1, 0($t1)            # 取出当前光标的内容
+sw $s1, 0($t2)            # 复制到下一行
+addi $t1, $t1, -4         # 同时往前挪一个位置
+addi $t2, $t2, -4
+bne $t1, $s6, down_loop   # 如果被复制的对象还没有到达屏幕第一个点，则继续复制
+lw $s1, 0($t1)            # 还要对第一个点额外做一次复制 
+sw $s1, 0($t2)            
+addi $t0, $t0, 320        # 更新光标的位置$t0
+j read_kbd
+
+# 按下加号键"+"，屏幕上移一行
+upScreen:
+add $t2, $zero, $s6         # 屏幕第一个点的地址
+addi $t1, $s6, 320          # 第二行第一个点的地址
+up_loop:
+lw $s1, 0($t1)              # 下一行的点复制到上一行
+sw $s1, 0($t2)
+addi $t1, $t1, 4            # 右移一个点
+addi $t2, $t2, 4
+bne $t2, $t0, up_loop       # 如果还没到最后一个点，则继续复制
+sw $zero, 0($t0)            # 删除原先的光标
+addi $t0, $t0, -320         # 更新光标的位置$t0
+j read_kbd
 
 toGraph:
 j read_kbd
