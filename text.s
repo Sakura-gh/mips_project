@@ -73,12 +73,12 @@ and $t2, $t1, $s5         # 同理，取出ready信号
 beq $t2, $zero, read_kbd  # ready=0，则回去重新读
 andi $t2, $t1, 0x00FF     # 否则，取出低八位的断码(标识码)
 
-# add $t1, $zero, $t0       # 先把当前光标位置$t0保存在$t1里
-# addi $t0, $s6, 9284       # $t0等于最后一行第一个点的地址，4*2400-4*80+4=9284
-# add $a0, $zero, $t2       # $a0=断码
-# addi $a1, $zero, 8        
-# jal display_num           # 显示8位断码
-# add $t0, $zero, $t1       # 还原$t0为当前光标地址
+add $t1, $zero, $t0       # 先把当前光标位置$t0保存在$t1里
+addi $t0, $s6, 9280       # $t0等于最后一行第一个点的地址，4*2400-4*80=9280
+add $a0, $zero, $t2       # $a0=断码
+addi $a1, $zero, 8        
+jal display_num           # 显示8位断码
+add $t0, $zero, $t1       # 还原$t0为当前光标地址
 
 add $ra, $zero, $zero     # branch语句无法对$ra赋值来进行跳回，因此把$ra置为0来表明这是显示键盘码，执行完显示函数后直接跳回read_kbd即可
 
@@ -184,337 +184,725 @@ beq $t2, $s1, upScreen      # if $t2 == "+", then 屏幕上移一行
 j read_kbd
 
 # 字符显示函数的调用有两种途径：1、显示键盘码，此时$ra=0，执行完后直接跳到read_kbd重新读取ps2；2、某些函数相要直接显示字符，此时显示完后返回$ra的地址
+# 对字符A~Z、0~9，以下函数会同时显示该字符和它的ASCII码
 a:
-addi $sp, $sp, -4
+addi $sp, $sp, -12
+sw $t1, 8($sp)
+sw $s1, 4($sp)
 sw $ra, 0($sp)
 ori $s0, $zero, 0x0F41    # $s0 = ascii_of "a" with color
 jal display               # 显示字符"a"
-
-# add $t1, $zero, $t0       # 保存当前光标$t0的地址到$t1
-# addi $t0, $s6, 8964       # 倒数第二行第一个点的地址
-# andi $a0, $s0, 0x00FF     # 取出第八位的ASCII码
-# addi $a1, $zero, 8
-# jal display_num           # 在倒数第二行显示字符的ASCII码
-# add $t0, $zero, $t1       # 还原$t0         
-
+# 还是直接写ASCII码，不调用display_num了，避免套娃   
+addi $t1, $s6, 8960         # 倒数第二行第一个点的地址
+addi $s1, $zero, 0x0634     # $s1 = '4' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'4'
+addi $t1, $t1, 4            # 倒数第二行第二个点的地址
+addi $s1, $zero, 0x0631     # $s1 = '1' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'1'
 lw $ra, 0($sp)
-addi $sp, $sp, 4
+lw $s1, 4($sp)
+lw $t1, 8($sp)
+addi $sp, $sp, 12
 beq $ra, $zero, read_kbd  # 如果$ra=0，说明显示的是键盘码，此时返回键盘码读取函数read_kbd
 jr $ra
 
 b:
-addi $sp, $sp, -4
+addi $sp, $sp, -12
+sw $t1, 8($sp)
+sw $s1, 4($sp)
 sw $ra, 0($sp)
 ori $s0, $zero, 0x0F42    # $s0 = ascii_of "b" with color
 jal display
+addi $t1, $s6, 8960         # 倒数第二行第一个点的地址
+addi $s1, $zero, 0x0634     # $s1 = '4' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'4'
+addi $t1, $t1, 4            # 倒数第二行第二个点的地址
+addi $s1, $zero, 0x0632     # $s1 = '2' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'2'
 lw $ra, 0($sp)
-addi $sp, $sp, 4
+lw $s1, 4($sp)
+lw $t1, 8($sp)
+addi $sp, $sp, 12
 beq $ra, $zero, read_kbd
 jr $ra
+
 c:
-addi $sp, $sp, -4
+addi $sp, $sp, -12
+sw $t1, 8($sp)
+sw $s1, 4($sp)
 sw $ra, 0($sp)
 ori $s0, $zero, 0x0F43    # $s0 = ascii_of "c" with color
 jal display
+addi $t1, $s6, 8960         # 倒数第二行第一个点的地址
+addi $s1, $zero, 0x0634     # $s1 = '4' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'4'
+addi $t1, $t1, 4            # 倒数第二行第二个点的地址
+addi $s1, $zero, 0x0633     # $s1 = '3' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'3'
 lw $ra, 0($sp)
-addi $sp, $sp, 4
+lw $s1, 4($sp)
+lw $t1, 8($sp)
+addi $sp, $sp, 12
 beq $ra, $zero, read_kbd
 jr $ra
+
 d:
-addi $sp, $sp, -4
+addi $sp, $sp, -12
+sw $t1, 8($sp)
+sw $s1, 4($sp)
 sw $ra, 0($sp)
 ori $s0, $zero, 0x0F44    # $s0 = ascii_of "d" with color
 jal display
+addi $t1, $s6, 8960         # 倒数第二行第一个点的地址
+addi $s1, $zero, 0x0634     # $s1 = '4' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'4'
+addi $t1, $t1, 4            # 倒数第二行第二个点的地址
+addi $s1, $zero, 0x0634     # $s1 = '4' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'4'
 lw $ra, 0($sp)
-addi $sp, $sp, 4
+lw $s1, 4($sp)
+lw $t1, 8($sp)
+addi $sp, $sp, 12
 beq $ra, $zero, read_kbd
 jr $ra
+
 e:
-addi $sp, $sp, -4
+addi $sp, $sp, -12
+sw $t1, 8($sp)
+sw $s1, 4($sp)
 sw $ra, 0($sp)
 ori $s0, $zero, 0x0F45    # $s0 = ascii_of "5" with color
 jal display
+addi $t1, $s6, 8960         # 倒数第二行第一个点的地址
+addi $s1, $zero, 0x0634     # $s1 = '4' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'4'
+addi $t1, $t1, 4            # 倒数第二行第二个点的地址
+addi $s1, $zero, 0x0635     # $s1 = '5' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'5'
 lw $ra, 0($sp)
-addi $sp, $sp, 4
+lw $s1, 4($sp)
+lw $t1, 8($sp)
+addi $sp, $sp, 12
 beq $ra, $zero, read_kbd
 jr $ra
+
 f:
-addi $sp, $sp, -4
+addi $sp, $sp, -12
+sw $t1, 8($sp)
+sw $s1, 4($sp)
 sw $ra, 0($sp)
 ori $s0, $zero, 0x0F46    # $s0 = ascii_of "f" with color
 jal display
+addi $t1, $s6, 8960         # 倒数第二行第一个点的地址
+addi $s1, $zero, 0x0634     # $s1 = '4' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'4'
+addi $t1, $t1, 4            # 倒数第二行第二个点的地址
+addi $s1, $zero, 0x0636     # $s1 = '6' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'6'
 lw $ra, 0($sp)
-addi $sp, $sp, 4
+lw $s1, 4($sp)
+lw $t1, 8($sp)
+addi $sp, $sp, 12
 beq $ra, $zero, read_kbd
 jr $ra
+
 g:
-addi $sp, $sp, -4
+addi $sp, $sp, -12
+sw $t1, 8($sp)
+sw $s1, 4($sp)
 sw $ra, 0($sp)
 ori $s0, $zero, 0x0F47    # $s0 = ascii_of "g" with color
 jal display
+addi $t1, $s6, 8960         # 倒数第二行第一个点的地址
+addi $s1, $zero, 0x0634     # $s1 = '4' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'4'
+addi $t1, $t1, 4            # 倒数第二行第二个点的地址
+addi $s1, $zero, 0x0637     # $s1 = '7' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'7'
 lw $ra, 0($sp)
-addi $sp, $sp, 4
+lw $s1, 4($sp)
+lw $t1, 8($sp)
+addi $sp, $sp, 12
 beq $ra, $zero, read_kbd
 jr $ra
+
 h:
-addi $sp, $sp, -4
+addi $sp, $sp, -12
+sw $t1, 8($sp)
+sw $s1, 4($sp)
 sw $ra, 0($sp)
 ori $s0, $zero, 0x0F48    # $s0 = ascii_of "h" with color
 jal display
+addi $t1, $s6, 8960         # 倒数第二行第一个点的地址
+addi $s1, $zero, 0x0634     # $s1 = '4' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'4'
+addi $t1, $t1, 4            # 倒数第二行第二个点的地址
+addi $s1, $zero, 0x0638     # $s1 = '8' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'8'
 lw $ra, 0($sp)
-addi $sp, $sp, 4
+lw $s1, 4($sp)
+lw $t1, 8($sp)
+addi $sp, $sp, 12
 beq $ra, $zero, read_kbd
 jr $ra
+
 i:
-addi $sp, $sp, -4
+addi $sp, $sp, -12
+sw $t1, 8($sp)
+sw $s1, 4($sp)
 sw $ra, 0($sp)
 ori $s0, $zero, 0x0F49    # $s0 = ascii_of "i" with color
 jal display
+addi $t1, $s6, 8960         # 倒数第二行第一个点的地址
+addi $s1, $zero, 0x0634     # $s1 = '4' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'4'
+addi $t1, $t1, 4            # 倒数第二行第二个点的地址
+addi $s1, $zero, 0x0639     # $s1 = '9' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'9'
 lw $ra, 0($sp)
-addi $sp, $sp, 4
+lw $s1, 4($sp)
+lw $t1, 8($sp)
+addi $sp, $sp, 12
 beq $ra, $zero, read_kbd
 jr $ra
+
 j:
-addi $sp, $sp, -4
+addi $sp, $sp, -12
+sw $t1, 8($sp)
+sw $s1, 4($sp)
 sw $ra, 0($sp)
 ori $s0, $zero, 0x0F4A    # $s0 = ascii_of "j" with color
 jal display
+addi $t1, $s6, 8960         # 倒数第二行第一个点的地址
+addi $s1, $zero, 0x0634     # $s1 = '4' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'4'
+addi $t1, $t1, 4            # 倒数第二行第二个点的地址
+addi $s1, $zero, 0x0641     # $s1 = 'A' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'A'
 lw $ra, 0($sp)
-addi $sp, $sp, 4
+lw $s1, 4($sp)
+lw $t1, 8($sp)
+addi $sp, $sp, 12
 beq $ra, $zero, read_kbd
 jr $ra
+
 k:
-addi $sp, $sp, -4
+addi $sp, $sp, -12
+sw $t1, 8($sp)
+sw $s1, 4($sp)
 sw $ra, 0($sp)
 ori $s0, $zero, 0x0F4B    # $s0 = ascii_of "k" with color
 jal display
+addi $t1, $s6, 8960         # 倒数第二行第一个点的地址
+addi $s1, $zero, 0x0634     # $s1 = '4' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'4'
+addi $t1, $t1, 4            # 倒数第二行第二个点的地址
+addi $s1, $zero, 0x0642     # $s1 = 'B' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'B'
 lw $ra, 0($sp)
-addi $sp, $sp, 4
+lw $s1, 4($sp)
+lw $t1, 8($sp)
+addi $sp, $sp, 12
 beq $ra, $zero, read_kbd
 jr $ra
+
 l:
-addi $sp, $sp, -4
+addi $sp, $sp, -12
+sw $t1, 8($sp)
+sw $s1, 4($sp)
 sw $ra, 0($sp)
 ori $s0, $zero, 0x0F4C    # $s0 = ascii_of "l" with color
 jal display
+addi $t1, $s6, 8960         # 倒数第二行第一个点的地址
+addi $s1, $zero, 0x0634     # $s1 = '4' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'4'
+addi $t1, $t1, 4            # 倒数第二行第二个点的地址
+addi $s1, $zero, 0x0643     # $s1 = 'C' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'C'
 lw $ra, 0($sp)
-addi $sp, $sp, 4
+lw $s1, 4($sp)
+lw $t1, 8($sp)
+addi $sp, $sp, 12
 beq $ra, $zero, read_kbd
 jr $ra
+
 m:
-addi $sp, $sp, -4
+addi $sp, $sp, -12
+sw $t1, 8($sp)
+sw $s1, 4($sp)
 sw $ra, 0($sp)
 ori $s0, $zero, 0x0F4D    # $s0 = ascii_of "m" with color
 jal display
+addi $t1, $s6, 8960         # 倒数第二行第一个点的地址
+addi $s1, $zero, 0x0634     # $s1 = '4' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'4'
+addi $t1, $t1, 4            # 倒数第二行第二个点的地址
+addi $s1, $zero, 0x0644     # $s1 = 'D' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'D'
 lw $ra, 0($sp)
-addi $sp, $sp, 4
+lw $s1, 4($sp)
+lw $t1, 8($sp)
+addi $sp, $sp, 12
 beq $ra, $zero, read_kbd
 jr $ra
+
 n:
-addi $sp, $sp, -4
+addi $sp, $sp, -12
+sw $t1, 8($sp)
+sw $s1, 4($sp)
 sw $ra, 0($sp)
 ori $s0, $zero, 0x0F4E    # $s0 = ascii_of "n" with color
 jal display
+addi $t1, $s6, 8960         # 倒数第二行第一个点的地址
+addi $s1, $zero, 0x0634     # $s1 = '4' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'4'
+addi $t1, $t1, 4            # 倒数第二行第二个点的地址
+addi $s1, $zero, 0x0645     # $s1 = 'E' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'E'
 lw $ra, 0($sp)
-addi $sp, $sp, 4
+lw $s1, 4($sp)
+lw $t1, 8($sp)
+addi $sp, $sp, 12
 beq $ra, $zero, read_kbd
 jr $ra
+
 o:
-addi $sp, $sp, -4
+addi $sp, $sp, -12
+sw $t1, 8($sp)
+sw $s1, 4($sp)
 sw $ra, 0($sp)
 ori $s0, $zero, 0x0F4F    # $s0 = ascii_of "o" with color
 jal display
+addi $t1, $s6, 8960         # 倒数第二行第一个点的地址
+addi $s1, $zero, 0x0634     # $s1 = '4' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'4'
+addi $t1, $t1, 4            # 倒数第二行第二个点的地址
+addi $s1, $zero, 0x0646     # $s1 = 'F' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'F'
 lw $ra, 0($sp)
-addi $sp, $sp, 4
+lw $s1, 4($sp)
+lw $t1, 8($sp)
+addi $sp, $sp, 12
 beq $ra, $zero, read_kbd
 jr $ra
+
 p:
-addi $sp, $sp, -4
+addi $sp, $sp, -12
+sw $t1, 8($sp)
+sw $s1, 4($sp)
 sw $ra, 0($sp)
 ori $s0, $zero, 0x0F50    # $s0 = ascii_of "p" with color
 jal display
+addi $t1, $s6, 8960         # 倒数第二行第一个点的地址
+addi $s1, $zero, 0x0635     # $s1 = '5' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'5'
+addi $t1, $t1, 4            # 倒数第二行第二个点的地址
+addi $s1, $zero, 0x0630     # $s1 = '0' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'0'
 lw $ra, 0($sp)
-addi $sp, $sp, 4
+lw $s1, 4($sp)
+lw $t1, 8($sp)
+addi $sp, $sp, 12
 beq $ra, $zero, read_kbd
 jr $ra
+
 q:
-addi $sp, $sp, -4
+addi $sp, $sp, -12
+sw $t1, 8($sp)
+sw $s1, 4($sp)
 sw $ra, 0($sp)
 ori $s0, $zero, 0x0F51    # $s0 = ascii_of "q" with color
 jal display
+addi $t1, $s6, 8960         # 倒数第二行第一个点的地址
+addi $s1, $zero, 0x0635     # $s1 = '5' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'5'
+addi $t1, $t1, 4            # 倒数第二行第二个点的地址
+addi $s1, $zero, 0x0631     # $s1 = '1' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'1'
 lw $ra, 0($sp)
-addi $sp, $sp, 4
+lw $s1, 4($sp)
+lw $t1, 8($sp)
+addi $sp, $sp, 12
 beq $ra, $zero, read_kbd
 jr $ra
+
 r:
-addi $sp, $sp, -4
+addi $sp, $sp, -12
+sw $t1, 8($sp)
+sw $s1, 4($sp)
 sw $ra, 0($sp)
 ori $s0, $zero, 0x0F52    # $s0 = ascii_of "r" with color
 jal display
+addi $t1, $s6, 8960         # 倒数第二行第一个点的地址
+addi $s1, $zero, 0x0635     # $s1 = '5' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'5'
+addi $t1, $t1, 4            # 倒数第二行第二个点的地址
+addi $s1, $zero, 0x0632     # $s1 = '2' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'02
 lw $ra, 0($sp)
-addi $sp, $sp, 4
+lw $s1, 4($sp)
+lw $t1, 8($sp)
+addi $sp, $sp, 12
 beq $ra, $zero, read_kbd
 jr $ra
+
 s:
-addi $sp, $sp, -4
+addi $sp, $sp, -12
+sw $t1, 8($sp)
+sw $s1, 4($sp)
 sw $ra, 0($sp)
 ori $s0, $zero, 0x0F53    # $s0 = ascii_of "s" with color
 jal display
+addi $t1, $s6, 8960         # 倒数第二行第一个点的地址
+addi $s1, $zero, 0x0635     # $s1 = '5' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'5'
+addi $t1, $t1, 4            # 倒数第二行第二个点的地址
+addi $s1, $zero, 0x0633     # $s1 = '3' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'3'
 lw $ra, 0($sp)
-addi $sp, $sp, 4
+lw $s1, 4($sp)
+lw $t1, 8($sp)
+addi $sp, $sp, 12
 beq $ra, $zero, read_kbd
 jr $ra
+
 t:
-addi $sp, $sp, -4
+addi $sp, $sp, -12
+sw $t1, 8($sp)
+sw $s1, 4($sp)
 sw $ra, 0($sp)
 ori $s0, $zero, 0x0F54    # $s0 = ascii_of "t" with color
 jal display
+addi $t1, $s6, 8960         # 倒数第二行第一个点的地址
+addi $s1, $zero, 0x0635     # $s1 = '5' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'5'
+addi $t1, $t1, 4            # 倒数第二行第二个点的地址
+addi $s1, $zero, 0x0634     # $s1 = '4' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'04
 lw $ra, 0($sp)
-addi $sp, $sp, 4
+lw $s1, 4($sp)
+lw $t1, 8($sp)
+addi $sp, $sp, 12
 beq $ra, $zero, read_kbd
 jr $ra
+
 u:
-addi $sp, $sp, -4
+addi $sp, $sp, -12
+sw $t1, 8($sp)
+sw $s1, 4($sp)
 sw $ra, 0($sp)
 ori $s0, $zero, 0x0F55    # $s0 = ascii_of "u" with color
 jal display
+addi $t1, $s6, 8960         # 倒数第二行第一个点的地址
+addi $s1, $zero, 0x0635     # $s1 = '5' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'5'
+addi $t1, $t1, 4            # 倒数第二行第二个点的地址
+addi $s1, $zero, 0x0635     # $s1 = '5' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'5'
 lw $ra, 0($sp)
-addi $sp, $sp, 4
+lw $s1, 4($sp)
+lw $t1, 8($sp)
+addi $sp, $sp, 12
 beq $ra, $zero, read_kbd
 jr $ra
+
 v:
-addi $sp, $sp, -4
+addi $sp, $sp, -12
+sw $t1, 8($sp)
+sw $s1, 4($sp)
 sw $ra, 0($sp)
 ori $s0, $zero, 0x0F56    # $s0 = ascii_of "v" with color
 jal display
+addi $t1, $s6, 8960         # 倒数第二行第一个点的地址
+addi $s1, $zero, 0x0635     # $s1 = '5' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'5'
+addi $t1, $t1, 4            # 倒数第二行第二个点的地址
+addi $s1, $zero, 0x0636     # $s1 = '6' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'6'
 lw $ra, 0($sp)
-addi $sp, $sp, 4
+lw $s1, 4($sp)
+lw $t1, 8($sp)
+addi $sp, $sp, 12
 beq $ra, $zero, read_kbd
 jr $ra
+
 w:
-addi $sp, $sp, -4
+addi $sp, $sp, -12
+sw $t1, 8($sp)
+sw $s1, 4($sp)
 sw $ra, 0($sp)
 ori $s0, $zero, 0x0F57    # $s0 = ascii_of "w" with color
 jal display
+addi $t1, $s6, 8960         # 倒数第二行第一个点的地址
+addi $s1, $zero, 0x0635     # $s1 = '5' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'5'
+addi $t1, $t1, 4            # 倒数第二行第二个点的地址
+addi $s1, $zero, 0x0637     # $s1 = '7' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'7'
 lw $ra, 0($sp)
-addi $sp, $sp, 4
+lw $s1, 4($sp)
+lw $t1, 8($sp)
+addi $sp, $sp, 12
 beq $ra, $zero, read_kbd
 jr $ra
+
 x:
-addi $sp, $sp, -4
+addi $sp, $sp, -12
+sw $t1, 8($sp)
+sw $s1, 4($sp)
 sw $ra, 0($sp)
 ori $s0, $zero, 0x0F58    # $s0 = ascii_of "x" with color
 jal display
+addi $t1, $s6, 8960         # 倒数第二行第一个点的地址
+addi $s1, $zero, 0x0635     # $s1 = '5' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'5'
+addi $t1, $t1, 4            # 倒数第二行第二个点的地址
+addi $s1, $zero, 0x0638     # $s1 = '8' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'8'
 lw $ra, 0($sp)
-addi $sp, $sp, 4
+lw $s1, 4($sp)
+lw $t1, 8($sp)
+addi $sp, $sp, 12
 beq $ra, $zero, read_kbd
 jr $ra
+
 y:
-addi $sp, $sp, -4
+addi $sp, $sp, -12
+sw $t1, 8($sp)
+sw $s1, 4($sp)
 sw $ra, 0($sp)
 ori $s0, $zero, 0x0F59    # $s0 = ascii_of "y" with color
 jal display
+addi $t1, $s6, 8960         # 倒数第二行第一个点的地址
+addi $s1, $zero, 0x0635     # $s1 = '5' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'5'
+addi $t1, $t1, 4            # 倒数第二行第二个点的地址
+addi $s1, $zero, 0x0639     # $s1 = '9' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'9'
 lw $ra, 0($sp)
-addi $sp, $sp, 4
+lw $s1, 4($sp)
+lw $t1, 8($sp)
+addi $sp, $sp, 12
 beq $ra, $zero, read_kbd
 jr $ra
+
 z:
-addi $sp, $sp, -4
+addi $sp, $sp, -12
+sw $t1, 8($sp)
+sw $s1, 4($sp)
 sw $ra, 0($sp)
 ori $s0, $zero, 0x0F5A    # $s0 = ascii_of "z" with color
 jal display
+addi $t1, $s6, 8960         # 倒数第二行第一个点的地址
+addi $s1, $zero, 0x0635     # $s1 = '5' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'5'
+addi $t1, $t1, 4            # 倒数第二行第二个点的地址
+addi $s1, $zero, 0x0641     # $s1 = 'A' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'A'
 lw $ra, 0($sp)
-addi $sp, $sp, 4
+lw $s1, 4($sp)
+lw $t1, 8($sp)
+addi $sp, $sp, 12
 beq $ra, $zero, read_kbd
 jr $ra
+
 n0:
-addi $sp, $sp, -4
+addi $sp, $sp, -12
+sw $t1, 8($sp)
+sw $s1, 4($sp)
 sw $ra, 0($sp)
 ori $s0, $zero, 0x0F30    # $s0 = ascii_of "0" with color
 jal display
+addi $t1, $s6, 8960         # 倒数第二行第一个点的地址
+addi $s1, $zero, 0x0633     # $s1 = '3' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'3'
+addi $t1, $t1, 4            # 倒数第二行第二个点的地址
+addi $s1, $zero, 0x0630     # $s1 = '0' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'0'
 lw $ra, 0($sp)
-addi $sp, $sp, 4
+lw $s1, 4($sp)
+lw $t1, 8($sp)
+addi $sp, $sp, 12
 beq $ra, $zero, read_kbd
 jr $ra
+
 n1:
-addi $sp, $sp, -4
+addi $sp, $sp, -12
+sw $t1, 8($sp)
+sw $s1, 4($sp)
 sw $ra, 0($sp)
 ori $s0, $zero, 0x0F31    # $s0 = ascii_of "1" with color
 jal display
+addi $t1, $s6, 8960         # 倒数第二行第一个点的地址
+addi $s1, $zero, 0x0633     # $s1 = '3' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'3'
+addi $t1, $t1, 4            # 倒数第二行第二个点的地址
+addi $s1, $zero, 0x0631     # $s1 = '1' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'1'
 lw $ra, 0($sp)
-addi $sp, $sp, 4
+lw $s1, 4($sp)
+lw $t1, 8($sp)
+addi $sp, $sp, 12
 beq $ra, $zero, read_kbd
 jr $ra
+
 n2:
-addi $sp, $sp, -4
+addi $sp, $sp, -12
+sw $t1, 8($sp)
+sw $s1, 4($sp)
 sw $ra, 0($sp)
 ori $s0, $zero, 0x0F32    # $s0 = ascii_of "2" with color
 jal display
+addi $t1, $s6, 8960         # 倒数第二行第一个点的地址
+addi $s1, $zero, 0x0633     # $s1 = '3' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'3'
+addi $t1, $t1, 4            # 倒数第二行第二个点的地址
+addi $s1, $zero, 0x0632     # $s1 = '2' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'2'
 lw $ra, 0($sp)
-addi $sp, $sp, 4
+lw $s1, 4($sp)
+lw $t1, 8($sp)
+addi $sp, $sp, 12
 beq $ra, $zero, read_kbd
 jr $ra
+
 n3:
-addi $sp, $sp, -4
+addi $sp, $sp, -12
+sw $t1, 8($sp)
+sw $s1, 4($sp)
 sw $ra, 0($sp)
 ori $s0, $zero, 0x0F33    # $s0 = ascii_of "3" with color
 jal display
+addi $t1, $s6, 8960         # 倒数第二行第一个点的地址
+addi $s1, $zero, 0x0633     # $s1 = '3' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'3'
+addi $t1, $t1, 4            # 倒数第二行第二个点的地址
+addi $s1, $zero, 0x0633     # $s1 = '3' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'3'
 lw $ra, 0($sp)
-addi $sp, $sp, 4
+lw $s1, 4($sp)
+lw $t1, 8($sp)
+addi $sp, $sp, 12
 beq $ra, $zero, read_kbd
 jr $ra
+
 n4:
-addi $sp, $sp, -4
+addi $sp, $sp, -12
+sw $t1, 8($sp)
+sw $s1, 4($sp)
 sw $ra, 0($sp)
 ori $s0, $zero, 0x0F34    # $s0 = ascii_of "4" with color
 jal display
+addi $t1, $s6, 8960         # 倒数第二行第一个点的地址
+addi $s1, $zero, 0x0633     # $s1 = '3' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'3'
+addi $t1, $t1, 4            # 倒数第二行第二个点的地址
+addi $s1, $zero, 0x0634     # $s1 = '4' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'4'
 lw $ra, 0($sp)
-addi $sp, $sp, 4
+lw $s1, 4($sp)
+lw $t1, 8($sp)
+addi $sp, $sp, 12
 beq $ra, $zero, read_kbd
 jr $ra
+
 n5:
-addi $sp, $sp, -4
+addi $sp, $sp, -12
+sw $t1, 8($sp)
+sw $s1, 4($sp)
 sw $ra, 0($sp)
 ori $s0, $zero, 0x0F35    # $s0 = ascii_of "5" with color
 jal display
+addi $t1, $s6, 8960         # 倒数第二行第一个点的地址
+addi $s1, $zero, 0x0633     # $s1 = '3' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'3'
+addi $t1, $t1, 4            # 倒数第二行第二个点的地址
+addi $s1, $zero, 0x0635     # $s1 = '5' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'5'
 lw $ra, 0($sp)
-addi $sp, $sp, 4
+lw $s1, 4($sp)
+lw $t1, 8($sp)
+addi $sp, $sp, 12
 beq $ra, $zero, read_kbd
 jr $ra
+
 n6:
-addi $sp, $sp, -4
+addi $sp, $sp, -12
+sw $t1, 8($sp)
+sw $s1, 4($sp)
 sw $ra, 0($sp)
 ori $s0, $zero, 0x0F36    # $s0 = ascii_of "6" with color
 jal display
+addi $t1, $s6, 8960         # 倒数第二行第一个点的地址
+addi $s1, $zero, 0x0633     # $s1 = '3' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'3'
+addi $t1, $t1, 4            # 倒数第二行第二个点的地址
+addi $s1, $zero, 0x0636     # $s1 = '6' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'6'
 lw $ra, 0($sp)
-addi $sp, $sp, 4
+lw $s1, 4($sp)
+lw $t1, 8($sp)
+addi $sp, $sp, 12
 beq $ra, $zero, read_kbd
 jr $ra
+
 n7:
-addi $sp, $sp, -4
+addi $sp, $sp, -12
+sw $t1, 8($sp)
+sw $s1, 4($sp)
 sw $ra, 0($sp)
 ori $s0, $zero, 0x0F37    # $s0 = ascii_of "7" with color
 jal display
+addi $t1, $s6, 8960         # 倒数第二行第一个点的地址
+addi $s1, $zero, 0x0633     # $s1 = '3' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'3'
+addi $t1, $t1, 4            # 倒数第二行第二个点的地址
+addi $s1, $zero, 0x0637     # $s1 = '7' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'7'
 lw $ra, 0($sp)
-addi $sp, $sp, 4
+lw $s1, 4($sp)
+lw $t1, 8($sp)
+addi $sp, $sp, 12
 beq $ra, $zero, read_kbd
 jr $ra
+
 n8:
-addi $sp, $sp, -4
+addi $sp, $sp, -12
+sw $t1, 8($sp)
+sw $s1, 4($sp)
 sw $ra, 0($sp)
 ori $s0, $zero, 0x0F38    # $s0 = ascii_of "8" with color
 jal display
+addi $t1, $s6, 8960         # 倒数第二行第一个点的地址
+addi $s1, $zero, 0x0633     # $s1 = '3' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'3'
+addi $t1, $t1, 4            # 倒数第二行第二个点的地址
+addi $s1, $zero, 0x0638     # $s1 = '8' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'8'
 lw $ra, 0($sp)
-addi $sp, $sp, 4
+lw $s1, 4($sp)
+lw $t1, 8($sp)
+addi $sp, $sp, 12
 beq $ra, $zero, read_kbd
 jr $ra
+
 n9:
-addi $sp, $sp, -4
+addi $sp, $sp, -12
+sw $t1, 8($sp)
+sw $s1, 4($sp)
 sw $ra, 0($sp)
 ori $s0, $zero, 0x0F39    # $s0 = ascii_of "9" with color
 jal display
+addi $t1, $s6, 8960         # 倒数第二行第一个点的地址
+addi $s1, $zero, 0x0633     # $s1 = '3' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'3'
+addi $t1, $t1, 4            # 倒数第二行第二个点的地址
+addi $s1, $zero, 0x0639     # $s1 = '9' with yellow color
+sw $s1, 0($t1)              # 显示黄色的'9'
 lw $ra, 0($sp)
-addi $sp, $sp, 4
+lw $s1, 4($sp)
+lw $t1, 8($sp)
+addi $sp, $sp, 12
 beq $ra, $zero, read_kbd
 jr $ra
 
@@ -623,7 +1011,7 @@ toGraph:
 j read_kbd
 
 enter: # 回车键，换行
-# lui $a0, 0xABCD
+# lui $a0, 0xABCD         # 测试代码
 # addi $a1, $zero, 4
 # jal display_num
 jal display_regs
@@ -642,20 +1030,26 @@ sw $s0, 0($t0)             # 下一行行首显示光标
 j read_kbd                 # 返回重新读取键盘码
 
 display:
+addi $sp, $sp, -4
+sw $s0, 0($sp)
 sw $s0, 0($t0)            # display the character $s0
 addi $t0, $t0, 4          # update offset of text_vram
 addi $s0, $zero, 0x065F   # update $s0 into cur, yellow
 sw $s0, 0($t0)            # display cur, but no update offset
+lw $s0, 0($sp)
+addi $sp, $sp, 4
 jr $ra                    # return 
 
 
 # input: $a0: 要输出的16进制码; $a1: 要输出的16进制码位数
 # output: vga显示$a1位存储在$a0里的16进制码
 display_num:              # 显示$a1位16进制码
-addi $sp, $sp, -12        # 先保存$ra，这里$t1、$s1在多次调用该函数时可能会被覆盖，因此也要做保存
+addi $sp, $sp, -20        # 先保存$ra，这里$t1、$s1在多次调用该函数时可能会被覆盖，因此也要做保存
 sw $ra, 0($sp)
 sw $t1, 4($sp)
-sw $s1, 8($sp)
+sw $t2, 8($sp)
+sw $s0, 12($sp)
+sw $s1, 16($sp)
 
 lui $t1, 0xF000           # $t1高四位为1，用于取出$a0的高四位，也就是8位16进制数的第一位
 and $s1, $a0, $t1         # 取出$a0的高四位，放到$s1里
@@ -767,8 +1161,10 @@ j next_num
 exit_num:
 lw $ra, 0($sp)
 lw $t1, 4($sp)
-lw $s1, 8($sp)
-addi $sp, $sp, 12
+lw $t2, 8($sp)
+lw $s0, 12($sp)
+lw $s1, 16($sp)
+addi $sp, $sp, 20
 jr $ra
 
 # 显示目标寄存器，缺省状态为显示全部32个寄存器
