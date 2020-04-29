@@ -73,6 +73,13 @@ and $t2, $t1, $s5         # 同理，取出ready信号
 beq $t2, $zero, read_kbd  # ready=0，则回去重新读
 andi $t2, $t1, 0x00FF     # 否则，取出低八位的断码(标识码)
 
+# add $t1, $zero, $t0       # 先把当前光标位置$t0保存在$t1里
+# addi $t0, $s6, 9284       # $t0等于最后一行第一个点的地址，4*2400-4*80+4=9284
+# add $a0, $zero, $t2       # $a0=断码
+# addi $a1, $zero, 8        
+# jal display_num           # 显示8位断码
+# add $t0, $zero, $t1       # 还原$t0为当前光标地址
+
 add $ra, $zero, $zero     # branch语句无法对$ra赋值来进行跳回，因此把$ra置为0来表明这是显示键盘码，执行完显示函数后直接跳回read_kbd即可
 
 addi $s1, $zero, 0x1c     # $s1 = "a"
@@ -181,11 +188,20 @@ a:
 addi $sp, $sp, -4
 sw $ra, 0($sp)
 ori $s0, $zero, 0x0F41    # $s0 = ascii_of "a" with color
-jal display
+jal display               # 显示字符"a"
+
+# add $t1, $zero, $t0       # 保存当前光标$t0的地址到$t1
+# addi $t0, $s6, 8964       # 倒数第二行第一个点的地址
+# andi $a0, $s0, 0x00FF     # 取出第八位的ASCII码
+# addi $a1, $zero, 8
+# jal display_num           # 在倒数第二行显示字符的ASCII码
+# add $t0, $zero, $t1       # 还原$t0         
+
 lw $ra, 0($sp)
 addi $sp, $sp, 4
 beq $ra, $zero, read_kbd  # 如果$ra=0，说明显示的是键盘码，此时返回键盘码读取函数read_kbd
 jr $ra
+
 b:
 addi $sp, $sp, -4
 sw $ra, 0($sp)
@@ -1009,12 +1025,12 @@ jr $ra
 read_num:
 addi $sp, $sp, -4
 sw   $ra, 0($sp)
-sll $a1, $a1, 4             # 偏移地址
+sll $a1, $a1, 2             # 偏移地址
 sub $t1, $a0, $a1           # $t1=第一位数字的地址
 hex_loop:
 lw $s1, 0($t1)              # 取出该地址上的16进制数
 ori $t4, $zero, 0x0F30      # 如果$s1不在0~9: 0x0F30-0x0F39，A~F:0x0F41-0x0F46范围内，则返回0
-ori $t5, $zero, 0x0F46      # 由于我没有设置0x0F40的显示函数，因此这里肯定不会出现0x0F40
+ori $t5, $zero, 0x0F46      # 由于我没有设置其他地址的显示函数，因此这里肯定不会出现0x0F3A~0x0F40
 slt $t3, $s1, $t4
 bne $t3, $zero, set_null    # 遇到非法字符，则把输出的16进制数清零
 slt $t3, $t5, $s1
@@ -1022,7 +1038,7 @@ bne $t3, $zero, set_null
 sub $t2, $s1, $t4           # 转化为对应的数值放到$t2里，A~F还需额外减1
 slti $t3, $t2, 10
 bne $t3, $zero, hex_merge   # 如果$t2<10，则是数字0~9，直接合并到16进制数里
-addi $t2, $t2, -1           # 否则，A~F还需额外减1
+addi $t2, $t2, -7           # 否则，A~F还需额外减7
 hex_merge:
 sll $v0, $v0, 4             # $v0左移四位
 add $v0, $v0, $t2           # $t2补到低4位上
