@@ -530,6 +530,7 @@ enter: # 回车键，换行
 jal display_regs
 jal display_memory
 jal Bin2Hex
+jal Hex2ASCII
 sub  $t1, $t0, $s6        # $t1=delta_offset，即当前显示地址和屏幕第一个点的地址之差
 add $t2, $zero, $zero     # $t2 = 0
 loop_enter:               # $t2 = k*80 && $t2 < delta_offset, 执行完该循环，$t2=当前光标下一行第一个点的地址偏移量
@@ -552,8 +553,11 @@ jr $ra                    # return
 # input: $a0: 要输出的16进制码; $a1: 要输出的16进制码位数
 # output: vga显示$a1位存储在$a0里的16进制码
 display_num:              # 显示$a1位16进制码
-addi $sp, $sp, -4         # 先保存$ra
+addi $sp, $sp, -12        # 先保存$ra，这里$t1、$s1在多次调用该函数时可能会被覆盖，因此也要做保存
 sw $ra, 0($sp)
+sw $t1, 4($sp)
+sw $s1, 8($sp)
+
 lui $t1, 0xF000           # $t1高四位为1，用于取出$a0的高四位，也就是8位16进制数的第一位
 and $s1, $a0, $t1         # 取出$a0的高四位，放到$s1里
 addi $a1, $a1, 1          # $a1 = $a1 + 1, 也就是16进制码数量的上限("<=$a1" <=> "<$a1+1")
@@ -663,7 +667,9 @@ jal f
 j next_num
 exit_num:
 lw $ra, 0($sp)
-addi $sp, $sp, 4
+lw $t1, 4($sp)
+lw $s1, 8($sp)
+addi $sp, $sp, 12
 jr $ra
 
 # 显示目标寄存器，缺省状态为显示全部32个寄存器
@@ -915,12 +921,13 @@ addi $sp, $sp, 12
 jr $ra
 
 
-# 读取屏幕上的8个16进制数，并存放到$v0返回
-# input: $a0=最后一位数的地址，output：$v0:8位16进制数
+# 读取屏幕上的$a1个16进制数，并存放到$v0返回
+# input: $a0=$a1位数后一位的地址，output：$v0:8位16进制数
 read_num:
 addi $sp, $sp, -4
 sw   $ra, 0($sp)
-addi $t1, $a0, -32          # $t1=第一位数字的地址
+sll $a1, $a1, 4             # 偏移地址
+sub $t1, $a0, $a1           # $t1=第一位数字的地址
 hex_loop:
 lw $s1, 0($t1)              # 取出该地址上的16进制数
 ori $t4, $zero, 0x0F30      # 如果$s1不在0~9: 0x0F30-0x0F39，A~F:0x0F41-0x0F46范围内，则返回0
@@ -977,6 +984,7 @@ addi $t1, $t1, 4            # 地址$t1++
 DMEM:
 bne $t1, $t0, mem_return    # 如果前4个字符不是'DMEM'，则直接返回，而不显示任何内容
 addi $a0, $t0, -20          # 8位16进制数后一位的地址
+addi $a1, $zero, 8
 jal read_num                # 读取8位16进制数，返回值为$v0
 lw $a0, 0($v0)
 # add $a0, $zero, $v0
@@ -1058,6 +1066,56 @@ dis_decimal:
 addi $a1, $zero, 8
 jal display_num
 B2H_return:
+lw $a1, 0($sp)
+lw $a0, 4($sp)
+lw $ra, 8($sp)
+addi $sp, $sp, 12
+jr $ra
+
+# 16进制转2位ASCII码
+Hex2ASCII:
+addi $sp, $sp, -12
+sw $ra, 8($sp)
+sw $a0, 4($sp)
+sw $a1, 0($sp)
+H2A_0:
+addi $t1, $t0, -12          # $t1为$t0前三个字符中第一个字符的地址，一开始用于检测H2A的"H"
+lw $s1, 0($t1)              # 取出$t1地址上的字符
+ori $s2, $zero, 0x0F48      # $s2 = 'H'
+bne $s1, $s2, H2A_return    # 如果第一个字符不是'H'，则直接跳出检测
+addi $t1, $t1, 4            # 地址$t1++，检测下一个字符
+H2A_1:
+lw $s1, 0($t1)              # 取出$t1地址上的字符
+ori $s2, $zero, 0x0F32      # $s2 = '2'
+bne $s1, $s2, H2A_return    # 如果第二个字符不是2'，则直接跳出检测
+addi $t1, $t1, 4            # 地址$t1++，检测下一个字符
+H2A_2:
+lw $s1, 0($t1)              # 取出$t1地址上的字符
+ori $s2, $zero, 0x0F41      # $s2 = 'A'
+bne $s1, $s2, H2A_return    # 如果第三个字符不是'A'，则直接跳出检测
+addi $t1, $t1, 4            # 地址$t1++，检测下一个字符
+H2A:
+bne $t1, $t0, H2A_return    # 如果前三个字符不是'H2A'，则直接返回，而不显示任何内容
+add $t1, $zero, $s6         # 以下循环是为了获取当前行行首地址
+H2A_addr:
+addi $t1, $t1, 320
+slt $t3, $t1, $t0
+bne $t3, $zero, H2A_addr
+addi $t1, $t1, -320         # 此时$t1为该行行首地址
+addi $t5, $t0, -16            # 由于display_num的时候，$t0会变化，因此用一个$t5来保留原先16进制数的末地址
+ori $t4, $zero, 0x0F00      # 获取一个常数$t4用于得到ASCII码
+dis_ascii:
+# slt $t3, $t1, $t5
+# beq $t3, $zero, H2A_return
+beq $t1, $t5, H2A_return    # 扫描到光标时，转换完毕，返回调用处
+lw $s1, 0($t1)
+sub $a0, $s1, $t4
+sll $a0, $a0, 24            # display_num函数是从高位开始按照$a1指定位数输出的，因此把低两位左移到高两位
+addi $a1, $zero, 2          
+jal display_num             # 输出两位ASCII码
+addi $t1, $t1, 4
+j dis_ascii
+H2A_return:
 lw $a1, 0($sp)
 lw $a0, 4($sp)
 lw $ra, 8($sp)
