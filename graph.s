@@ -78,7 +78,7 @@ addi $t2, $t2, 1            # $t2=x++
 j loop2 
 next_point: 
 addi $s0, $zero, 0x00F0     # 给$s0颜色赋值，背景为绿色
-# sh $s0, 0($t0)    
+sh $s0, 0($t0)    
 addi $t0, $t0, 2            # offset+=2
 addi $t2, $t2, 1            # $t2=x++
 j loop2 
