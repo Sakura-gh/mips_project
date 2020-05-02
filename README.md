@@ -2,6 +2,8 @@
 
 > This is the mips project for computer organization
 
+本实验报告对应的网页：https://sakura-gh.github.io/mips_project/project.html
+
 #### 整体功能概览
 
 ##### 端口信号说明
